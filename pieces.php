@@ -5,6 +5,8 @@ class Context {
 	public $board;
 	public $pieces;
 	
+	public $undo;
+	
 	public $whiteToMove;
 	
 	public static $pieceAlias = array(
@@ -32,6 +34,7 @@ class Context {
 			$this->board[] = null;
 		}
 		$this->pieces = array();
+		$this->undo = array();
 	}
 	
 	/**
@@ -126,6 +129,29 @@ class Context {
 			}
 		}
 		return $result;
+	}
+	
+	/**
+	 * Determine whether the given piece attacks a square. This will return false
+	 * where square contains a piece of the same colour.
+	 * 
+	 * @param unknown $piece
+	 * @param unknown $square
+	 */
+	public function attacks($piece, $square) {
+		if (is_null($piece)) {
+			return false;
+		}
+		foreach ($piece->rules as $rule) {
+			if (!$rule->prerequisite->satisfied($this, $piece)) {
+				continue;
+			}
+			if ($rule->attacks($this, $piece, $square)) {
+				return true;
+			}
+		}
+		
+		return false;
 	}
 	
 	/**
@@ -414,10 +440,30 @@ class BlackKing extends King {
  */
 class Rule {
 	
+	public $prerequisite;
+	public $moveType;
+	public $result;
+	
 	public function __construct(Prerequisite $prerequisite, MoveType $moveType, Result $result) {
 		$this->prerequisite = $prerequisite;
 		$this->moveType = $moveType;
 		$this->result = $result;
+	}
+	
+	public function generateMoves(Context $context, Piece $piece) {
+		return $this->moveType->generateMoves($context, $piece);
+	}
+	
+	public function attacks(Context $context, Piece $piece, $square) {
+		// TODO: This is a very naive implementation which won't perform well
+		// TODO: Also, generateMoves doesn't give us the correct pawn moves for attacks
+		$moves = $this->moveType->generateAttacks($context, $piece);
+		foreach ($moves as $move) {
+			if ($move->to == $square) {
+				return true;
+			}
+		}
+		return false;
 	}
 	
 }
@@ -427,14 +473,30 @@ class Rule {
  */
 class MoveType {
 	
-	const MOVEORCAPTURE = 0;
 	const NOCAPTURES = 1;
 	const CAPTURESONLY = 2;
+	const MOVEORCAPTURE = 3;
 	
+	public $moveType;
 	public $directions = array();
 	
 	public function generateMoves(Context $context, Piece $piece) {
 		throw new Exception("generateMoves() not implemented for " . get_class($this));
+	}
+	
+	/**
+	 * Generate a list of the squares / pieces attacked by a piece. For pieces this is
+	 * the same as generateMoves, but for pawns it is different due to the way they
+	 * capture.
+	 * 
+	 * @param Context $context
+	 * @param Piece $piece
+	 */
+	public function generateAttacks(Context $context, Piece $piece) {
+		if ($this->moveType == self::NOCAPTURES) {
+			continue;
+		}
+		return $this->generateMoves($context, $piece);
 	}
 	
 }

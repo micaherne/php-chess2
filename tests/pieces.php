@@ -72,4 +72,18 @@ class PiecesTest extends PHPUnit_Framework_TestCase {
 		$moves = $c->generateAllPseudoLegalMoves();
 		$this->assertCount(20, $moves);
 	}
+	
+	public function testAttacksSquare() {
+		$c = new Context();
+		$c->fromFEN('r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1');
+		$piece = $c->board[0x51];
+		$this->assertInstanceOf('BlackBishop', $piece);
+		$this->assertTrue($c->attacks($piece, 0x24));
+		
+		$c->startPosition();
+		$piece = $c->board[0x15];
+		$this->assertInstanceOf('WhitePawn', $piece);
+		//$this->assertTrue($c->attacks($piece, 0x26));
+		//$this->assertFalse($c->attacks($piece, 0x67));
+	}
 }
